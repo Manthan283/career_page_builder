@@ -1,49 +1,122 @@
-// app/api/company/[slug]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { z } from "zod";
+import { revalidateCompany } from "@/lib/actions/revalidate";
 
-export async function GET(request: Request, { params }: any) {
-  const slug = params.slug;
-  const company = await prisma.company.findUnique({
-    where: { slug },
-  });
-  if (!company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
-  return NextResponse.json({ data: company });
+const sectionSchema = z.object({
+  id: z.string(), // client-generated
+  kind: z.enum(["about", "life", "benefits", "custom"]),
+  title: z.string().min(1).max(80),
+  body: z.string().min(1).max(3000),
+});
+
+const brandingSchema = z.object({
+  logo: z.string().url().optional().or(z.literal("")),
+  primaryColor: z.string().optional(),
+  heroText: z.string().max(300).optional(),
+  bannerImage: z.string().url().optional().or(z.literal("")),
+  cultureVideoUrl: z.string().url().optional().or(z.literal("")),
+  sections: z.array(sectionSchema).optional(),
+});
+
+const settingsSchema = z.object({}).passthrough();
+
+const companyUpdateSchema = z.object({
+  branding: brandingSchema.optional(),
+  settings: settingsSchema.optional(),
+});
+
+// helper: works whether ctx.params is object or Promise
+async function getSlug(ctx: any) {
+  const p = await ctx.params;
+  return p?.slug;
 }
 
-export async function PATCH(request: Request, { params }: any) {
-  const slug = params.slug;
-  // stub auth: NextRequest -> Request lacks headers in this signature, so read from fetch
-  // We'll parse JSON and allow call only if x-admin-company is present in request headers
-  const req = request as any;
-  // We can't access headers via request in the same way in app router — we use Request.headers
-  const adminHeader = req.headers.get("x-admin-company");
-  if (!adminHeader || adminHeader !== slug) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await request.json();
-  const data: any = {};
-  if (body.branding) data.branding = body.branding;
-  if (body.settings) data.settings = body.settings;
-  if (Object.keys(data).length === 0) return NextResponse.json({ error: "No fields" }, { status: 400 });
-
-  const company = await prisma.company.update({
-    where: { slug },
-    data,
-  });
-
-  // trigger ISR revalidate (call our revalidate endpoint)
+// GET: used by editor + anywhere else
+export async function GET(req: NextRequest, ctx: any) {
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/revalidate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-revalidate-secret": process.env.REVALIDATE_SECRET || "" },
-      body: JSON.stringify({ path: `/${slug}/careers` })
-    });
-  } catch (e) {
-    // ignore
-  }
+    const slug = await getSlug(ctx);
 
-  return NextResponse.json({ data: company });
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Missing company slug in route params" },
+        { status: 400 }
+      );
+    }
+
+    const company = await prisma.company.findUnique({
+      where: { slug },
+    });
+
+    if (!company) {
+      return NextResponse.json(
+        { error: "Company not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data: company });
+  } catch (err: any) {
+    console.error("GET /api/company/[slug] error:", err);
+    return NextResponse.json(
+      { error: "Internal error in company GET" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: update branding/settings (no auth for now)
+export async function PATCH(req: NextRequest, ctx: any) {
+  try {
+    const slug = await getSlug(ctx);
+
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Missing company slug in route params" },
+        { status: 400 }
+      );
+    }
+
+    const json = await req.json().catch(() => null);
+    if (!json) {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = companyUpdateSchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { branding, settings } = parsed.data;
+    if (!branding && !settings) {
+      return NextResponse.json(
+        { error: "No updatable fields provided" },
+        { status: 400 }
+      );
+    }
+
+    const company = await prisma.company.update({
+      where: { slug },
+      data: {
+        ...(branding ? { branding } : {}),
+        ...(settings ? { settings } : {}),
+      },
+    });
+
+    await revalidateCompany(slug);
+
+    return NextResponse.json({ data: company });
+  } catch (err: any) {
+    console.error("PATCH /api/company/[slug] error:", err);
+    return NextResponse.json(
+      { error: "Internal error in company PATCH" },
+      { status: 500 }
+    );
+  }
 }

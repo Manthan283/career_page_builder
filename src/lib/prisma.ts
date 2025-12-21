@@ -1,21 +1,22 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+// lib/prisma.ts
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-declare global {
-  // keep PrismaClient singleton across hot reloads in dev
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+};
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || "",
 });
 
 export const prisma =
-  global.prisma ??
+  globalForPrisma.prisma ??
   new PrismaClient({
-    adapter, // <-- adapter is required in v7 for classic client
-    log: ['query', 'info', 'warn', 'error'],
+    adapter,
   });
 
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}

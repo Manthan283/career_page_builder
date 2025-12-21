@@ -17,6 +17,7 @@ model Company {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   jobs        Job[]
+  users       User[]
 }
 
 model Job {
@@ -39,4 +40,16 @@ model Job {
 
   @@unique([companyId, slug])
   @@index([companyId, title])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String?  // hashed password if using credentials provider
+  role      String   @default("admin") // "admin", "recruiter", etc.
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

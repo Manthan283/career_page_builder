@@ -1,46 +1,91 @@
+// app/[companySlug]/careers/page.tsx
 import { prisma } from "@/lib/prisma";
-import JobList from "@/components/JobList";
+import Navbar from "@/components/Navbar";
+import CareersClient from "@/components/CareersClient";
 import React from "react";
 
-export default async function CareersPage({ params }: { params: { companySlug: string }}) {
-  const slug = params.companySlug;
-  const company = await prisma.company.findUnique({ where: { slug }});
-  if (!company) {
-    return (
-      <main className="container mx-auto p-8">
-        <h1>Company not found</h1>
-      </main>
-    );
-  }
-  const jobs = await prisma.job.findMany({
-    where: { companyId: company.id, isPublished: true },
-    orderBy: { postedAt: "desc" },
+export default async function CareersPage({
+  params,
+}: {
+  params: Promise<{ companySlug: string }>;
+}) {
+  const { companySlug } = await params;
+
+  const company = await prisma.company.findUnique({
+    where: { slug: companySlug },
   });
 
-  const branding = (company.branding ?? {}) as any;
+  if (!company) {
+    return <div className="container mx-auto p-6">Company not found</div>;
+  }
+
+  const branding = (company.branding as any) ?? {};
+
+  const primaryColor = branding.primaryColor || "#0f172a";
+  const bannerImage = branding.bannerImage;
 
   return (
-    <main className="container mx-auto p-6">
-      <header className="mb-6">
-        <div className="flex items-center gap-4">
-          {branding.logo ? <img src={branding.logo} alt={`${company.name} logo`} className="h-12 w-12 object-contain" /> : <div className="h-12 w-12 rounded bg-slate-200" />}
-          <div>
-            <h1 className="text-2xl font-semibold">{company.name}</h1>
-            <p className="text-sm text-slate-600">{company.description}</p>
+    <div
+      className="min-h-screen bg-slate-50"
+      style={{ "--brand": primaryColor } as React.CSSProperties}
+    >
+      <Navbar companyName={company.name} companySlug={companySlug} />
+
+      {/* ---------- HERO ---------- */}
+      <section className="relative">
+        {bannerImage ? (
+          <div
+            className="h-56 w-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${bannerImage})` }}
+          />
+        ) : (
+          <div
+            className="h-56 w-full"
+            style={{
+              background: "linear-gradient(135deg, var(--brand), #020617)",
+            }}
+          />
+        )}
+
+        <div className="absolute inset-0 flex items-end">
+          <div className="container mx-auto px-6 pb-6">
+            <div className="flex items-center gap-4">
+              {branding.logo ? (
+                <div className="h-14 w-14 rounded bg-white p-2 shadow flex items-center justify-center">
+                  <img
+                    src={branding.logo}
+                    alt={`${company.name} logo`}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-14 w-14 rounded bg-white/90 flex items-center justify-center text-sm font-semibold shadow">
+                  {company.name[0]}
+                </div>
+              )}
+
+              <div className="text-white">
+                <h1 className="text-3xl font-semibold">
+                  Careers at {company.name}
+                </h1>
+                <p className="mt-1 text-sm text-white/90 max-w-2xl">
+                  {branding.heroText ?? company.description}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-medium mb-2">Open roles</h2>
-        <JobList jobs={jobs} companySlug={slug} />
       </section>
 
-      <section className="mt-12">
-        {/* Render about from branding.heroText or company.description */}
-        <h3 className="text-lg font-semibold">About</h3>
-        <p className="text-sm text-slate-700 mt-2">{branding.heroText ?? company.description}</p>
-      </section>
-    </main>
+      {/* ---------- CLIENT ---------- */}
+      <main className="container mx-auto p-6 max-w-5xl">
+        <CareersClient
+          slug={companySlug}
+          companyName={company.name}
+          branding={branding}
+          description={company.description}
+        />
+      </main>
+    </div>
   );
 }
