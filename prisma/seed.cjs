@@ -1,4 +1,4 @@
-// prisma/seed.ts
+// prisma/seed.cjs
 require("dotenv").config();
 
 const { PrismaClient } = require("@prisma/client");
