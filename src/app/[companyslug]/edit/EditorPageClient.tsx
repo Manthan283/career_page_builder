@@ -44,6 +44,9 @@ function TopBar({
   );
 }
 
+type EditorSection = "branding" | "createJob" | "roles";
+
+
 interface SidebarProps {
   active: EditorSection;
   onChange: (section: EditorSection) => void;
@@ -193,7 +196,6 @@ export default function EditorPageClient({
     isLoading: companyLoading,
   } = useSWR(companyUrl, fetcher);
 
-  type EditorSection = "branding" | "createJob" | "roles";
 
   const [activeSection, setActiveSection] = useState<EditorSection>("branding");
 

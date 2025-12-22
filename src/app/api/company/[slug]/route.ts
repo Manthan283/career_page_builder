@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { revalidateCompany } from "@/lib/actions/revalidate";
 
@@ -104,8 +105,8 @@ export async function PATCH(req: NextRequest, ctx: any) {
     const company = await prisma.company.update({
       where: { slug },
       data: {
-        ...(branding ? { branding } : {}),
-        ...(settings ? { settings } : {}),
+        ...(branding ? { branding: branding as Prisma.InputJsonValue } : {}),
+        ...(settings ? { settings: settings as Prisma.InputJsonValue } : {}),
       },
     });
 

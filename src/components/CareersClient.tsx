@@ -12,6 +12,7 @@ type Props = {
   slug: string;
   companyName: string;
   branding: any;
+  description?: string | null;
 };
 
 /* ---------- debounce hook ---------- */

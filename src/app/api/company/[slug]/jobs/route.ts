@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { revalidateCompany } from "@/lib/actions/revalidate";
 
@@ -72,7 +73,7 @@ export async function GET(request: Request, ctx: any) {
     ];
   }
 
-  const orderBy =
+  const orderBy: Prisma.JobOrderByWithRelationInput =
     sort === "oldest"
       ? { postedAt: "asc" }
       : { postedAt: "desc" };

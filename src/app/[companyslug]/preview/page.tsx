@@ -2,6 +2,8 @@
 import Navbar from "@/components/Navbar";
 import React from "react";
 import JobList from "@/components/JobList";
+import { prisma } from "@/lib/prisma";
+
 
 type Snapshot = {
   branding?: any;
@@ -11,15 +13,15 @@ type Snapshot = {
 
 function renderJobDraft(jobDraft: any, sectionOrder: string[] = []) {
   // jobDraft shape: { title, location, jobType, about, what, qualifications, niceToHave, customTitle, customContent, applyLink, applyEmail }
-  const responsibilities = (jobDraft?.what || "")
+  const responsibilities: string[] = (jobDraft?.what || "")
     .split("\n")
     .map((s: string) => s.trim())
     .filter(Boolean);
-  const qualifications = (jobDraft?.qualifications || "")
+  const qualifications: string[] = (jobDraft?.qualifications || "")
     .split("\n")
     .map((s: string) => s.trim())
     .filter(Boolean);
-  const niceToHave = (jobDraft?.niceToHave || "")
+  const niceToHave: string[] = (jobDraft?.niceToHave || "")
     .split("\n")
     .map((s: string) => s.trim())
     .filter(Boolean);
