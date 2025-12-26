@@ -180,6 +180,8 @@ function toEmbedUrl(url?: string): string | null {
   }
 }
 
+
+
 export default function EditorPageClient({
   params,
 }: {
@@ -434,6 +436,11 @@ export default function EditorPageClient({
   const jobs = jobsData?.data ?? [];
   const companyName = companyData?.data?.name ?? slug;
   const previewEmbedUrl = toEmbedUrl(branding.cultureVideoUrl);
+  const previewSectionOrder =
+  newJob.sectionOrder?.length === DEFAULT_SECTION_ORDER.length
+    ? newJob.sectionOrder
+    : DEFAULT_SECTION_ORDER;
+
 
 
   return (
@@ -768,7 +775,7 @@ export default function EditorPageClient({
             (newJob.jobType || "Type")}
         </p>
 
-        {newJob.sectionOrder.map((key) => {
+        {previewSectionOrder.map((key) => {
           switch (key) {
             case "aboutRole":
               return newJob.aboutRole ? (

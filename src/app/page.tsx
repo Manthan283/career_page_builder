@@ -1,33 +1,28 @@
 // app/page.tsx
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
-const companies = [
-  {
-    slug: "vintera",
-    name: "Vintera",
-    tag: "AI interview prep platform",
-    description:
-      "Practice interviews, get AI feedback, and help teams hire with confidence.",
-    accent: "bg-indigo-50 border-indigo-100",
-  },
-  {
-    slug: "acme-hr",
-    name: "Acme HR",
-    tag: "Modern ATS for growing teams",
-    description:
-      "Streamline hiring, track candidates, and collaborate with your team.",
-    accent: "bg-emerald-50 border-emerald-100",
-  },
-];
+// Ensure fresh data (important for SaaS behavior)
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  const companies = await prisma.company.findMany({
+  orderBy: { createdAt: "desc" },
+  select: {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+  },
+});
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-4 py-12">
         {/* Hero */}
         <header className="mb-10">
           <span className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-medium text-slate-700">
-            Prototype · Careers Page Builder
+            Careers Platform · Internal Sandbox
           </span>
 
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
@@ -35,73 +30,96 @@ export default function Home() {
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm sm:text-base text-slate-600">
-            This is your internal sandbox for testing the ATS / careers page
-            builder. Use the controls below to open a public careers page or
-            jump into the editor for a seed company.
+            This environment reflects real companies created via the ATS.
+            Use it to open public careers pages or jump into the editor.
           </p>
         </header>
 
         {/* Companies grid */}
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Seed companies
-            </h2>
-            <p className="text-xs text-slate-500">
-              Preloaded: <code>vintera</code>, <code>acme-hr</code>
-            </p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Companies
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Manage careers pages and job listings
+              </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {companies.map((company) => (
-              <article
-                key={company.slug}
-                className={`rounded-lg border ${company.accent} p-4 shadow-sm hover:shadow-md transition-shadow`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {company.name}
-                    </h3>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      {company.tag}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-600">
+          <Link
+            href="/create-company"
+            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+          >
+            + Create company
+          </Link>
+        </div>
+
+
+          {companies.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-slate-500">
+              No companies yet. Create one to get started.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {companies.map((company) => (
+                <article
+                  key={company.id}
+                  className="group relative rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 group-hover:text-slate-950">
+                        {company.name}
+                      </h3>
+
+                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {company.slug}
+                      </p>
+                    </div>
+
+                    <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
+                      Active
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  {company.description && (
+                    <p className="mt-4 line-clamp-3 text-sm text-slate-600">
                       {company.description}
                     </p>
-                  </div>
-                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-500 border">
-                    {company.slug}
-                  </span>
-                </div>
+                  )}
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    href={`/${company.slug}/careers`}
-                    className="inline-flex items-center rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                  >
-                    View careers page
-                  </Link>
+                  {/* Divider */}
+                  <div className="my-5 h-px bg-slate-100" />
 
-                  {/* For now we only expose editor for vintera, but you can enable both */}
-                  {company.slug === "vintera" && (
+                  {/* Actions */}
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={`/${company.slug}/careers`}
+                      className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-slate-800"
+                    >
+                      View careers
+                      <span aria-hidden>→</span>
+                    </Link>
+
                     <Link
                       href={`/${company.slug}/edit`}
-                      className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-xs font-medium text-black transition-colors hover:bg-slate-200"
                     >
                       Open editor
                     </Link>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* Footer-ish note */}
+        {/* Footer */}
         <footer className="mt-10 border-t pt-4 text-xs text-slate-500">
-          This environment is for prototyping the ATS careers experience. Data
-          is seeded locally and may be reset.
+          This environment reflects live database state.
         </footer>
       </div>
     </main>
