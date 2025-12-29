@@ -3,13 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { revalidateCompany } from "@/lib/actions/revalidate";
-
-/* ---------------- helpers ---------------- */
-
-async function getSlug(ctx: any) {
-  const p = await ctx.params;
-  return p?.slug;
-}
+import { auth } from "@/lib/auth";
+import { requireCompanyAccess } from "@/lib/authz";
 
 /* ---------------- schema ---------------- */
 
@@ -23,16 +18,13 @@ const createJobSchema = z.object({
   metadata: z.any().optional(),
 });
 
-/* ---------------- GET ---------------- */
+/* ---------------- GET (PUBLIC) ---------------- */
 
 export async function GET(request: Request, ctx: any) {
-  const slug = await getSlug(ctx);
+  const { slug } = await ctx.params; // ✅ FIX
 
   if (!slug) {
-    return NextResponse.json(
-      { error: "Missing company slug" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing company slug" }, { status: 400 });
   }
 
   const company = await prisma.company.findUnique({
@@ -41,10 +33,7 @@ export async function GET(request: Request, ctx: any) {
   });
 
   if (!company) {
-    return NextResponse.json(
-      { error: "Company not found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -54,18 +43,10 @@ export async function GET(request: Request, ctx: any) {
   const type = searchParams.get("type") ?? undefined;
   const sort = searchParams.get("sort") ?? "latest";
 
-  const where: any = {
-    companyId: company.id,
-  };
+  const where: any = { companyId: company.id };
 
-  if (location) {
-    where.location = { contains: location, mode: "insensitive" };
-  }
-
-  if (type) {
-    where.jobType = type;
-  }
-
+  if (location) where.location = { contains: location, mode: "insensitive" };
+  if (type) where.jobType = type;
   if (q) {
     where.OR = [
       { title: { contains: q, mode: "insensitive" } },
@@ -74,113 +55,120 @@ export async function GET(request: Request, ctx: any) {
   }
 
   const orderBy: Prisma.JobOrderByWithRelationInput =
-    sort === "oldest"
-      ? { postedAt: "asc" }
-      : { postedAt: "desc" };
+    sort === "oldest" ? { postedAt: "asc" } : { postedAt: "desc" };
 
-  const jobs = await prisma.job.findMany({
-    where,
-    orderBy,
-  });
+  const jobs = await prisma.job.findMany({ where, orderBy });
 
   return NextResponse.json({ data: jobs });
 }
 
-
-/* ---------------- POST ---------------- */
+/* ---------------- POST (PROTECTED) ---------------- */
 
 export async function POST(request: Request, ctx: any) {
-  const slug = await getSlug(ctx);
+  try {
+    const { slug } = await ctx.params; // ✅ correct
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Missing company slug" },
+        { status: 400 }
+      );
+    }
 
-  if (!slug) {
-    return NextResponse.json(
-      { error: "Missing company slug" },
-      { status: 400 }
-    );
-  }
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const adminHeader = request.headers.get("x-admin-company");
-  if (!adminHeader || adminHeader !== slug) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    // ✅ authz guarded + catchable
+    await requireCompanyAccess({
+      userId: session.user.id,
+      companySlug: slug,
+      roles: ["OWNER", "ADMIN", "EDITOR"],
+    });
 
-  const company = await prisma.company.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-  if (!company) {
-    return NextResponse.json(
-      { error: "Company not found" },
-      { status: 404 }
-    );
-  }
+    const parsed = createJobSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const parsed = createJobSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const {
-    title,
-    location,
-    jobType,
-    description,
-    responsibilities,
-    qualifications,
-    metadata,
-  } = parsed.data;
-
-  const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 80);
-
-  const baseSlug = slugify(title);
-  let finalSlug = baseSlug;
-  let counter = 1;
-
-  // ensure uniqueness per company
-  while (
-    await prisma.job.findFirst({
-      where: {
-        companyId: company.id,
-        slug: finalSlug,
-      },
-      select: { id: true },
-    })
-  ) {
-    counter += 1;
-    finalSlug = `${baseSlug}-${counter}`;
-  }
-
-  const job = await prisma.job.create({
-    data: {
-      companyId: company.id,
+    const {
       title,
-      slug: finalSlug,
-      location: location || null,
-      jobType: jobType || null,
+      location,
+      jobType,
       description,
-      responsibilities: responsibilities ?? [],
-      qualifications: qualifications ?? [],
-      metadata: metadata ?? {},
-    },
-  });
+      responsibilities,
+      qualifications,
+      metadata,
+    } = parsed.data;
 
-  await revalidateCompany(slug);
+    const slugify = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
+        .slice(0, 80);
 
-  return NextResponse.json({ data: job });
+    const baseSlug = slugify(title);
+    let finalSlug = baseSlug;
+    let counter = 1;
+
+    const company = await prisma.company.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!company) {
+      return NextResponse.json(
+        { error: "Company not found" },
+        { status: 404 }
+      );
+    }
+
+    while (
+      await prisma.job.findFirst({
+        where: { companyId: company.id, slug: finalSlug },
+        select: { id: true },
+      })
+    ) {
+      counter += 1;
+      finalSlug = `${baseSlug}-${counter}`;
+    }
+
+    const job = await prisma.job.create({
+      data: {
+        companyId: company.id,
+        title,
+        slug: finalSlug,
+        location: location || null,
+        jobType: jobType || null,
+        description,
+        responsibilities: responsibilities ?? [],
+        qualifications: qualifications ?? [],
+        metadata: metadata ?? {},
+      },
+    });
+
+    await revalidateCompany(slug);
+    return NextResponse.json({ data: job }, { status: 201 });
+
+  } catch (err) {
+    // ✅ THIS is the missing piece
+    if (err instanceof Response) {
+      return err;
+    }
+
+    console.error("POST /api/company/[slug]/jobs error:", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
-
-

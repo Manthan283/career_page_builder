@@ -8,22 +8,24 @@ datasource db {
 }
 
 model Company {
-  id          String   @id @default(uuid())
-  slug        String   @unique
+  id          String          @id @default(uuid())
+  slug        String          @unique
   name        String
   description String?
   website     String?
-  branding    Json?    // { logo, primaryColor, heroText, about }
+  branding    Json?
   settings    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   jobs        Job[]
   users       User[]
+  members     CompanyMember[]
+  invites     CompanyInvite[]
 }
 
 model Job {
-  id               String   @id @default(uuid())
-  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId        String
   title            String
   slug             String
@@ -32,25 +34,66 @@ model Job {
   description      String
   responsibilities Json?
   qualifications   Json?
-  isPublished      Boolean  @default(true)
-  postedAt         DateTime @default(now())
+  isPublished      Boolean   @default(true)
+  postedAt         DateTime  @default(now())
   expiresAt        DateTime?
   metadata         Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([companyId, slug])
   @@index([companyId, title])
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String?  // hashed password if using credentials provider
-  role      String   @default("admin") // "admin", "recruiter", etc.
-  company   Company  @relation(fields: [companyId], references: [id])
+  id          String          @id @default(uuid())
+  email       String          @unique
+  name        String?
+  password    String?
+  role        String          @default("admin")
+  company     Company         @relation(fields: [companyId], references: [id])
+  companyId   String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  memberships CompanyMember[]
+  invitesSent CompanyInvite[]
+}
+
+enum CompanyRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model CompanyMember {
+  id String @id @default(uuid())
+
+  userId    String
   companyId String
+  role      CompanyRole
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+model CompanyInvite {
+  id          String      @id @default(uuid())
+  email       String
+  role        CompanyRole
+  token       String      @unique
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId   String
+  invitedBy   User        @relation(fields: [invitedById], references: [id])
+  invitedById String
+  accepted    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime
 }

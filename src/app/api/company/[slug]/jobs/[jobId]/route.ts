@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { revalidateCompany } from "@/lib/actions/revalidate";
+import { auth } from "@/lib/auth";
+import { requireCompanyAccess } from "@/lib/authz";
+
+/* ---------------- schema ---------------- */
 
 const updateJobSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -13,20 +17,18 @@ const updateJobSchema = z.object({
   metadata: z.any().optional(),
 });
 
+
 type RouteContext = {
   params: Promise<{ slug: string; jobId: string }>;
 };
 
-/* ---------------- GET ---------------- */
+/* ---------------- GET (PUBLIC) ---------------- */
 
-export async function GET(request: Request, ctx: RouteContext) {
+export async function GET(_: Request, ctx: RouteContext) {
   const { slug, jobId } = await ctx.params;
 
   const job = await prisma.job.findFirst({
-    where: {
-      id: jobId,
-      company: { slug },
-    },
+    where: { id: jobId, company: { slug } },
   });
 
   if (!job) {
@@ -36,15 +38,21 @@ export async function GET(request: Request, ctx: RouteContext) {
   return NextResponse.json({ data: job });
 }
 
-/* ---------------- PATCH ---------------- */
+/* ---------------- PATCH (PROTECTED) ---------------- */
 
 export async function PATCH(request: Request, ctx: RouteContext) {
+  
   const { slug, jobId } = await ctx.params;
-
-  const adminHeader = request.headers.get("x-admin-company");
-  if (!adminHeader || adminHeader !== slug) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  await requireCompanyAccess({
+    userId: session.user.id,
+    companySlug: slug,
+    roles: ["OWNER", "ADMIN", "EDITOR"],
+  });
 
   const body = await request.json().catch(() => null);
   if (!body) {
@@ -59,54 +67,32 @@ export async function PATCH(request: Request, ctx: RouteContext) {
     );
   }
 
-  const p = parsed.data;
-  const data: any = {};
+  const updated = await prisma.job.update({
+    where: { id: jobId },
+    data: parsed.data,
+  });
 
-  if (p.title !== undefined) data.title = p.title;
-  if (p.location !== undefined) data.location = p.location || null;
-  if (p.jobType !== undefined) data.jobType = p.jobType || null;
-  if (p.description !== undefined) data.description = p.description;
-  if (p.responsibilities !== undefined)
-    data.responsibilities = p.responsibilities;
-  if (p.qualifications !== undefined)
-    data.qualifications = p.qualifications;
-  if (p.metadata !== undefined) data.metadata = p.metadata;
-
-  try {
-    const updated = await prisma.job.update({
-      where: { id: jobId },
-      data,
-    });
-
-    try {
-      await revalidateCompany(slug);
-    } catch {}
-
-    return NextResponse.json({ data: updated });
-  } catch {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  }
+  await revalidateCompany(slug);
+  return NextResponse.json({ data: updated });
 }
 
-/* ---------------- DELETE ---------------- */
+/* ---------------- DELETE (PROTECTED) ---------------- */
 
-export async function DELETE(request: Request, ctx: RouteContext) {
+export async function DELETE(_: Request, ctx: RouteContext) {
   const { slug, jobId } = await ctx.params;
-
-  const adminHeader = request.headers.get("x-admin-company");
-  if (!adminHeader || adminHeader !== slug) {
+  const session = await auth();
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    await prisma.job.delete({ where: { id: jobId } });
+  await requireCompanyAccess({
+    userId: session.user.id,
+    companySlug: slug,
+    roles: ["OWNER", "ADMIN", "EDITOR"],
+  });
 
-    try {
-      await revalidateCompany(slug);
-    } catch {}
+  await prisma.job.delete({ where: { id: jobId } });
+  await revalidateCompany(slug);
 
-    return NextResponse.json({ message: "Job deleted" });
-  } catch {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  }
+  return NextResponse.json({ message: "Job deleted" });
 }

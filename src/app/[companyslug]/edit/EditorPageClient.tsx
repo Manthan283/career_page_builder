@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import JobList from "@/components/JobList"; // used in preview
 import Navbar from "@/components/Navbar"; // optional, used inside modal for fidelity
+import InviteForm from "./InviteForm";
 
 /* ========================================================= */
 /* UI PRIMITIVES (Option 2 SaaS STRUCTURE)                    */
@@ -245,7 +246,6 @@ export default function EditorPageClient({
       headers: {
         "Content-Type": "application/json",
         // dev header not required for branding but harmless
-        "x-admin-company": slug,
       },
       body: JSON.stringify({ branding }),
     });
@@ -277,8 +277,7 @@ export default function EditorPageClient({
     const resp = await fetch(`/api/company/${slug}/jobs`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-admin-company": slug, // DEV AUTH header (temporary)
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         title: newJob.title,
@@ -379,8 +378,7 @@ export default function EditorPageClient({
       const resp = await fetch(`/api/company/${slug}/jobs/${editingJob.id}`, {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
-          "x-admin-company": slug, // DEV AUTH header
+          "Content-Type": "application/json",// DEV AUTH header
         },
         body: JSON.stringify({
           title: editFields.title,
@@ -410,9 +408,6 @@ export default function EditorPageClient({
     try {
       const resp = await fetch(`/api/company/${slug}/jobs/${id}`, {
         method: "DELETE",
-        headers: {
-          "x-admin-company": slug, // DEV AUTH header
-        },
       });
       if (!resp.ok) {
         console.error("Delete failed", resp.status, await resp.text());
@@ -538,6 +533,8 @@ export default function EditorPageClient({
         </Card>
         )}
 
+        {/* ================= Invite Team Member ================= */}
+        {activeSection === "branding" && (<InviteForm companySlug={params.companySlug} />)}
         {/* ================= Create Job ================= */}
 {activeSection === "createJob" && (
 <Card

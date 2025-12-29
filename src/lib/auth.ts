@@ -1,17 +1,68 @@
-// lib/auth.ts
-import type { NextRequest } from "next/server";
+// src/lib/auth.ts
+import { getServerSession } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { prisma } from "@/lib/prisma";
+import { compare } from "bcryptjs";
 
 /**
- * Very small auth stub: checks for header "x-admin-company"
- * Value should be the company slug (only for prototype/demo).
- *
- * For real app: use NextAuth/JWT + roles + company_admin table.
+ * Central NextAuth configuration.
+ * This is imported both by:
+ * - /api/auth/[...nextauth]
+ * - server-side auth() helper
  */
-export async function requireAdmin(req: NextRequest) {
-  const adminHeader = req.headers.get("x-admin-company");
-  if (!adminHeader) {
-    return { ok: false, status: 401, message: "Missing admin header" };
-  }
-  // In prototype, accept any non-empty header as admin for that company slug
-  return { ok: true, companySlug: adminHeader };
+export const authOptions: NextAuthOptions = {
+  providers: [
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials.password) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user || !user.password) return null;
+
+        const isValid = await compare(credentials.password, user.password);
+        if (!isValid) return null;
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
+      },
+    }),
+  ],
+  session: { strategy: "jwt" },
+  pages: {
+    signIn: "/login",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token?.id) {
+        (session.user as any).id = token.id;
+      }
+      return session;
+    },
+  },
+};
+
+/**
+ * Server-side auth helper.
+ * Use this everywhere in App Router & API routes.
+ */
+export async function auth() {
+  return getServerSession(authOptions);
 }
