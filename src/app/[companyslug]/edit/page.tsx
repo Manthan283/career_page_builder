@@ -3,13 +3,12 @@ import { auth } from "@/lib/auth";
 import { requireCompanyAccess } from "@/lib/authz";
 import EditorPageClient from "./EditorPageClient";
 
-export default async function EditorPage(props: {
-  params: { companySlug: string } | Promise<{ companySlug: string }>;
+export default async function EditorPage({
+  params,
+}: {
+  params: Promise<{ companySlug: string }>;
 }) {
-  const { companySlug } =
-    typeof (props.params as any).then === "function"
-      ? await props.params
-      : props.params;
+  const { companySlug } = await params;
 
   const session = await auth();
 
