@@ -13,7 +13,7 @@ export default async function EditorPage({
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect(`/login?callbackUrl=/${companySlug}/edit`);
   }
 
   try {

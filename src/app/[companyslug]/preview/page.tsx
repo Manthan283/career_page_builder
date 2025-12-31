@@ -98,10 +98,10 @@ export default async function PreviewPage({
   params,
   searchParams,
 }: {
-  params: { companySlug: string };
+  params: Promise<{ companySlug: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const { companySlug } = params;
+  const { companySlug } = await params;
 
   // If `data` present -> try to decode snapshot (base64 JSON)
   const maybeData = Array.isArray(searchParams?.data) ? searchParams?.data[0] : searchParams?.data;
