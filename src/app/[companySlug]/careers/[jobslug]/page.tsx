@@ -74,6 +74,7 @@ export default async function JobPage(props: {
   };
 
   return (
+    <div key={jobSlug}>
     <div className="min-h-screen bg-slate-50">
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
@@ -225,5 +226,7 @@ export default async function JobPage(props: {
         )}
       </main>
     </div>
+  </div>
+    
   );
 }
