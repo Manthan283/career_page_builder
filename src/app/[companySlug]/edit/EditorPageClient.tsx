@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import JobList from "@/components/JobList"; // used in preview
-import Navbar from "@/components/Navbar"; // optional, used inside modal for fidelity
 import InviteForm from "./InviteForm";
 
 /* ========================================================= */
@@ -132,6 +131,7 @@ const DEFAULT_SECTION_ORDER = [
   "qualifications",
   "niceToHave",
   "extraSection",
+  "howToApply",
 ] as const;
 type SectionKey = (typeof DEFAULT_SECTION_ORDER)[number];
 
@@ -209,6 +209,7 @@ export default function EditorPageClient({
   } = useSWR(jobsUrl, fetcher);
 
   const [branding, setBranding] = useState<any>({});
+  const [heroText, setHeroText] = useState<string>("");
   const [showBrandingPreview, setShowBrandingPreview] = useState(false);
 
   // New job form – structured + section order
@@ -236,6 +237,7 @@ export default function EditorPageClient({
   useEffect(() => {
     if (companyData?.data) {
       setBranding(companyData.data.branding ?? {});
+      setHeroText(companyData.data.heroText ?? "");
     }
   }, [companyData]);
 
@@ -247,7 +249,7 @@ export default function EditorPageClient({
         "Content-Type": "application/json",
         // dev header not required for branding but harmless
       },
-      body: JSON.stringify({ branding }),
+      body: JSON.stringify({ heroText, branding }),
     });
     if (!resp.ok) {
       console.error("Branding save failed", await resp.text());
@@ -476,13 +478,22 @@ export default function EditorPageClient({
               }
             />
 
-            <label className="block text-sm">About company (hero text)</label>
+            <label className="block text-sm">Hero text</label>
+              <textarea
+                className="border p-2 w-full text-sm rounded min-h-[60px]"
+                placeholder="Helping teams hire with confidence"
+                value={heroText}
+                maxLength={120}
+                onChange={(e) => setHeroText(e.target.value)}
+              />
+
+            <label className="block text-sm">About company</label>
             <textarea
               className="border p-2 w-full text-sm rounded min-h-[80px]"
               placeholder="Tell candidates who you are, your mission, and what it's like to work with you."
-              value={branding.heroText ?? ""}
+              value={branding.aboutCompany ?? ""}
               onChange={(e) =>
-                setBranding({ ...branding, heroText: e.target.value })
+                setBranding({ ...branding, aboutCompany: e.target.value })
               }
             />
 
@@ -773,21 +784,106 @@ export default function EditorPageClient({
         </p>
 
         {previewSectionOrder.map((key) => {
-          switch (key) {
-            case "aboutRole":
-              return newJob.aboutRole ? (
-                <section key={key} className="mt-4">
-                  <h5 className="text-sm font-semibold mb-1">
-                    About the role
-                  </h5>
-                  <p className="text-sm whitespace-pre-line">
-                    {newJob.aboutRole}
-                  </p>
-                </section>
-              ) : null;
-            default:
-              return null;
-          }
+  switch (key) {
+    case "aboutRole":
+      return newJob.aboutRole ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">About the role</h5>
+          <p className="text-sm whitespace-pre-line">
+            {newJob.aboutRole}
+          </p>
+        </section>
+      ) : null;
+
+    case "responsibilities":
+      return newJob.responsibilitiesText ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">
+            What you’ll do
+          </h5>
+          <ul className="list-disc pl-5 text-sm space-y-1">
+            {newJob.responsibilitiesText
+              .split("\n")
+              .filter(Boolean)
+              .map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+          </ul>
+        </section>
+      ) : null;
+
+    case "qualifications":
+      return newJob.qualificationsText ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">
+            Qualifications
+          </h5>
+          <ul className="list-disc pl-5 text-sm space-y-1">
+            {newJob.qualificationsText
+              .split("\n")
+              .filter(Boolean)
+              .map((q, i) => (
+                <li key={i}>{q}</li>
+              ))}
+          </ul>
+        </section>
+      ) : null;
+
+    case "niceToHave":
+      return newJob.niceToHaveText ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">
+            Nice to have
+          </h5>
+          <ul className="list-disc pl-5 text-sm space-y-1">
+            {newJob.niceToHaveText
+              .split("\n")
+              .filter(Boolean)
+              .map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+          </ul>
+        </section>
+      ) : null;
+
+    case "extraSection":
+      return newJob.extraSectionTitle || newJob.extraSectionBody ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">
+            {newJob.extraSectionTitle || "More about this role"}
+          </h5>
+          <p className="text-sm whitespace-pre-line">
+            {newJob.extraSectionBody}
+          </p>
+        </section>
+      ) : null;
+
+    case "howToApply":
+      return newJob.applyUrl || newJob.applyEmail ? (
+        <section key={key} className="mt-4">
+          <h5 className="text-sm font-semibold mb-1">
+            How to apply
+          </h5>
+          <div className="flex gap-2 text-sm">
+            {newJob.applyUrl && (
+              <a
+                href={newJob.applyUrl}
+                target="_blank"
+                className="underline"
+              >
+                Apply link
+              </a>
+            )}
+            {newJob.applyEmail && (
+              <span>{newJob.applyEmail}</span>
+            )}
+          </div>
+        </section>
+      ) : null;
+
+    default:
+      return null;
+  }
         })}
       </div>
     )}
@@ -970,7 +1066,7 @@ export default function EditorPageClient({
                   {branding.logo ? <img src={branding.logo} alt="logo" className="h-12 w-12 object-contain" /> : <div className="h-12 w-12 rounded bg-slate-200" />}
                   <div>
                     <h1 className="text-2xl font-semibold">{companyName}</h1>
-                    <p className="text-sm text-slate-600">{branding.heroText ?? companyData?.data?.description}</p>
+                    <p className="text-sm text-slate-600">{branding.aboutCompany ?? companyData?.data?.description}</p>
                   </div>
                 </div>
               </header>

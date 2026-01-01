@@ -1,6 +1,5 @@
 // app/[companySlug]/careers/[jobSlug]/page.tsx
 import { prisma } from "@/lib/prisma";
-import Navbar from "@/components/Navbar";
 import React from "react";
 
 type SectionKey =
@@ -51,7 +50,7 @@ export default async function JobPage(props: {
     typeof metadata?.applyEmail === "string" ? metadata.applyEmail : "";
 
   const aboutCompanyText =
-    branding.heroText ??
+    branding.aboutCompany ??
     company.description ??
     `Learn more about working at ${company.name}.`;
 
@@ -73,7 +72,6 @@ export default async function JobPage(props: {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar companyName={company.name} companySlug={companySlug} />
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <script

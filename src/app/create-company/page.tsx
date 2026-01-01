@@ -6,17 +6,9 @@ import { useRouter } from "next/navigation";
 export default function CreateCompanyPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
+  const [heroText, setHeroText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function slugify(value: string) {
-    return value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +21,7 @@ export default function CreateCompanyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          slug: slug || slugify(name),
+          heroText,
         }),
       });
 
@@ -57,35 +49,35 @@ export default function CreateCompanyPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {/* Company name */}
           <div>
             <label className="block text-sm font-medium text-slate-700">
               Company name
             </label>
             <input
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
-              placeholder="Vintera"
+              placeholder="Enter your company name"
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setSlug(slugify(e.target.value));
-              }}
+              onChange={(e) => setName(e.target.value)}
               required
             />
           </div>
 
+          {/* Hero text */}
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Company slug
+              Hero text
             </label>
-            <input
+            <textarea
               className="mt-1 w-full rounded border px-3 py-2 text-sm"
-              placeholder="vintera"
-              value={slug}
-              onChange={(e) => setSlug(slugify(e.target.value))}
-              required
+              placeholder="Helping teams hire faster with confidence"
+              value={heroText}
+              onChange={(e) => setHeroText(e.target.value)}
+              maxLength={120}
+              rows={2}
             />
             <p className="mt-1 text-xs text-slate-500">
-              This will be used in the URL: /{slug || "your-company"}
+              Short one-line value proposition shown on cards and hero section.
             </p>
           </div>
 

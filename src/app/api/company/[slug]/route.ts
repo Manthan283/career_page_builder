@@ -14,7 +14,7 @@ const sectionSchema = z.object({
 const brandingSchema = z.object({
   logo: z.string().url().optional().or(z.literal("")),
   primaryColor: z.string().optional(),
-  heroText: z.string().max(300).optional(),
+  aboutCompany: z.string().max(300).optional(),
   bannerImage: z.string().url().optional().or(z.literal("")),
   cultureVideoUrl: z.string().url().optional().or(z.literal("")),
   sections: z.array(sectionSchema).optional(),
@@ -23,6 +23,7 @@ const brandingSchema = z.object({
 const settingsSchema = z.object({}).passthrough();
 
 const companyUpdateSchema = z.object({
+  heroText: z.string().max(300).optional(),
   branding: brandingSchema.optional(),
   settings: settingsSchema.optional(),
 });
@@ -94,8 +95,8 @@ export async function PATCH(req: NextRequest, ctx: any) {
       );
     }
 
-    const { branding, settings } = parsed.data;
-    if (!branding && !settings) {
+    const { heroText, branding, settings } = parsed.data;
+    if (heroText === undefined && !branding && !settings) {
       return NextResponse.json(
         { error: "No updatable fields provided" },
         { status: 400 }
@@ -105,6 +106,7 @@ export async function PATCH(req: NextRequest, ctx: any) {
     const company = await prisma.company.update({
       where: { slug },
       data: {
+        ...(heroText !== undefined ? { heroText } : {}),
         ...(branding ? { branding: branding as Prisma.InputJsonValue } : {}),
         ...(settings ? { settings: settings as Prisma.InputJsonValue } : {}),
       },

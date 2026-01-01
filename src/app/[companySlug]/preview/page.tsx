@@ -1,5 +1,4 @@
 // app/[companySlug]/preview/page.tsx
-import Navbar from "@/components/Navbar";
 import React from "react";
 import JobList from "@/components/JobList";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +9,7 @@ type Snapshot = {
   jobDraft?: any;
   sectionOrder?: string[];
 };
+
 
 function renderJobDraft(jobDraft: any, sectionOrder: string[] = []) {
   // jobDraft shape: { title, location, jobType, about, what, qualifications, niceToHave, customTitle, customContent, applyLink, applyEmail }
@@ -126,7 +126,6 @@ export default async function PreviewPage({
 
     return (
       <div>
-        <Navbar companyName={branding?.name ?? companySlug} companySlug={companySlug} />
         <main className="container mx-auto p-6 max-w-4xl">
           <header>
             <h1 className="text-2xl font-semibold">Preview — {branding?.name ?? companySlug}</h1>
@@ -159,7 +158,6 @@ export default async function PreviewPage({
 
   return (
     <div>
-      <Navbar companyName={company.name} companySlug={companySlug} />
       <main className="container mx-auto p-6">
         <header>
           <h1 className="text-2xl font-semibold">Preview — {company.name}</h1>

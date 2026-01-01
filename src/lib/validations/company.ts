@@ -4,7 +4,7 @@ import { z } from "zod";
 export const companyBrandingSchema = z.object({
   logo: z.string().url().optional().or(z.literal("")),
   primaryColor: z.string().optional(),
-  heroText: z.string().max(300).optional(),
+  aboutCompany: z.string().max(300).optional(),
   about: z.string().optional(),
 });
 

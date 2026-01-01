@@ -1,6 +1,5 @@
 // app/[companySlug]/careers/page.tsx
 import { prisma } from "@/lib/prisma";
-import Navbar from "@/components/Navbar";
 import CareersClient from "@/components/CareersClient";
 import React from "react";
 
@@ -29,7 +28,7 @@ export default async function CareersPage({
       className="min-h-screen bg-slate-50"
       style={{ "--brand": primaryColor } as React.CSSProperties}
     >
-      <Navbar companyName={company.name} companySlug={companySlug} />
+      
 
       {/* ---------- HERO ---------- */}
       <section className="relative">
@@ -69,7 +68,7 @@ export default async function CareersPage({
                   Careers at {company.name}
                 </h1>
                 <p className="mt-1 text-sm text-white/90 max-w-2xl">
-                  {branding.heroText ?? company.description}
+                  {branding.aboutCompany ?? company.description}
                 </p>
               </div>
             </div>

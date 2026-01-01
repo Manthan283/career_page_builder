@@ -11,6 +11,7 @@ export default async function Home() {
   select: {
     id: true,
     name: true,
+    heroText: true,
     slug: true,
     description: true,
   },
@@ -74,14 +75,14 @@ export default async function Home() {
                         {company.name}
                       </h3>
 
-                      <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        {company.slug}
+                      <p className="mt-1 text-xs font-medium tracking-wide text-slate-500">
+                        {company.heroText || "No tagline provided"}
                       </p>
                     </div>
 
                     <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600">
                       Active
-                    </span>
+                    </span> 
                   </div>
 
                   {/* Description */}
