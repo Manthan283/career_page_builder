@@ -1,8 +1,11 @@
 // app/[companySlug]/careers/[jobSlug]/page.tsx
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 import { prisma } from "@/lib/prisma";
+import { unstable_noStore as noStore } from "next/cache";
 import React from "react";
 
 type SectionKey =
@@ -15,6 +18,7 @@ type SectionKey =
 export default async function JobPage(props: {
   params: Promise<{ companySlug: string; jobSlug: string }>;
 }) {
+  noStore();
   const { companySlug, jobSlug } = await props.params;
 
   const company = await prisma.company.findUnique({
