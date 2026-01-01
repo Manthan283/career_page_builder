@@ -1,4 +1,7 @@
 // app/[companySlug]/careers/[jobSlug]/page.tsx
+
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 import React from "react";
 
