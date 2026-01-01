@@ -24,7 +24,7 @@ export default async function JobPage(props: {
   if (!company) return <div>Company not found</div>;
 
   const job = await prisma.job.findFirst({
-    where: { companyId: company.id, slug: jobSlug },
+    where: { company: { slug: companySlug }, slug: jobSlug },
   });
   if (!job) return <div>Job not found</div>;
 
