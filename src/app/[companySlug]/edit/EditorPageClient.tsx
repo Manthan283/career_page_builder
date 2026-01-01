@@ -566,6 +566,7 @@ export default function EditorPageClient({
           qualifications: "Qualifications",
           niceToHave: "Nice to have",
           extraSection: "Custom section",
+          howToApply: "How to apply",
         };
 
         return (
@@ -979,6 +980,7 @@ export default function EditorPageClient({
                       qualifications: "Qualifications",
                       niceToHave: "Nice to have",
                       extraSection: "Custom section",
+                      howToApply: "How to apply",
                     };
                     return (
                       <div key={key} className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-1 text-[11px]">
