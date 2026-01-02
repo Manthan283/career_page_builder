@@ -43,7 +43,6 @@ Deployment: Vercel
 🛠️ Local Setup
 1. Clone the repository
 git clone <https://github.com/Manthan283/career_page_builder.git>
-cd career-page-builder
 
 2. Install dependencies
 pnpm install
